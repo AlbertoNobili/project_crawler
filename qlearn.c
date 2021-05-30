@@ -1,5 +1,7 @@
-#include <math.h>
+#include "qlearn.h"
 #include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
 
 // Global constants
 #define MAXSTA	100		// max # of states
@@ -13,7 +15,7 @@
 // QL matrices
 static int T[MAXSTA][MAXACT];	// transition matrix	INUTILE
 static int R[MAXSTA][MAXACT];	// reward matrix		INUTILE
-static int Q[MAXSTA][MAXACT];	// Q matric
+static float Q[MAXSTA][MAXACT];	// Q matric
 
 // Global variables
 static int nsta;		// actual # of states
@@ -55,6 +57,7 @@ int s, a;
 
 	alpha = ALPHA0;
 	gam = GAMMA0;
+	eps_norm = 1.0;
 	eps_ini = EPSINI;
 	eps_fin = EPSFIN;
 	decay = DECAY0;
@@ -64,12 +67,32 @@ int s, a;
 			Q[s][a] = 0;
 }
 
+// Set parameters functions
+void ql_set_learning_rate(float a)
+{
+	alpha = a;
+}
+void ql_set_discount_factor(float g)
+{
+	gam = g;
+}
+void ql_set_expl_range(float e_ini, float e_fin)
+{
+	eps_ini = e_ini;
+	eps_fin = e_fin;
+}
+void ql_set_expl_decay(float d)
+{
+	decay = d;
+}
+
 // Reduce exploration
-static float esp_norm = 1.0;
 void ql_reduce_exploration()
 {
 	eps_norm = decay*eps_norm;
 	epsilon = eps_fin + eps_norm*(eps_ini - eps_fin);
+	//printf("Ho ridotto epsilon = %f\n", epsilon);
+
 }
 
 // Maximum Q value in a given state s
@@ -103,7 +126,7 @@ float m;
 }
 
 // Epsilon-greedy policy in a given state s
-int  ql_greedy_policy (int s)
+int ql_egreedy_policy (int s)
 {
 int ra, ba;
 float x;
@@ -115,13 +138,29 @@ float x;
 	else return ba;
 }
 
-// Update Q value DA METTERE IL VALORE DI RITORNO IN FLOAT
-int  ql_updateQ(int s, int a, int r, int snew)
+// Update Q value 
+float ql_updateQ(int s, int a, int r, int snew)
 {
 float Qtarget, TDerr;
 
+	//printf("r = %d, s = %d, a = %d, snew = %d, gamma = %f\n", r, s, a, snew, gam);
 	Qtarget = r + gam*ql_maxQ(snew);
+	//printf("Qtarget = %f\n", Qtarget);
 	TDerr = Qtarget - Q[s][a];
+	//printf("TDerr = %f\n", TDerr);
 	Q[s][a] = Q[s][a] + alpha*TDerr;
+	//printf("Q[%d][%d] = %f\n", s, a, Q[s][a]);
 	return fabs(TDerr);
+}
+
+// Show the Q matrix
+void ql_print_Qmatrix()
+{
+int i, j;
+	printf("Q matrix:\n");
+	for(i=0; i<nsta; i++){
+		for(j=0; j<nact; j++)
+			printf("%f ", Q[i][j]);
+		printf("\n");
+	}
 }

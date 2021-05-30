@@ -1,29 +1,69 @@
 #include <stdlib.h> 
+#include <time.h>
+#include <stdio.h>
+#include <math.h>
+#include "qlearn.h"
 
 // Global definitions
-#define L1  0.5     // link1 length
-#define L2  0.5     // link2 length
-#define RH  0.4     // robot height
-#define RL  1       // robot length
+#define L1      0.5     // link1 length [m]
+#define L2      0.7     // link2 length [m]
+#define RH      0.4     // robot height [m]
+#define RL      1       // robot length [m]
+#define TH1UP   0       // action move up link 1
+#define TH1DW   1       // action move down link 1
+#define TH2UP   2       // action move up link 2
+#define TH2DW   3       // action move down link 2
+#define TH1MAX  1.55    // max theta1 angle [rad]
+#define TH1MIN  -0.20   // min theta1 angle [rad]
+#define TH2MAX  -0.7    // max theta2 angle [rad]
+#define TH2MIN  -2.45   // min theta2 angle [rad]
+#define DTH1    0.35    // theta1 quantization step [rad]
+#define DTH2    0.35    // theta2 quantization step [rad]
 
-// Global variables
+#define MAXSTEP 10000000L    // max number of steps
+
+// Global variables (inutili se tanto ho le costanti, no?)
 static float t1min, t2min;
 static float t1max, t2max;
 static float dt1, dt2;
+static int n2;          // # of theta2 quantiations 
 
-// manca una funzione che inizializzi le variabili globali
+void init_global_variables()
+{
+    t1min = TH1MIN;
+    t1max = TH1MAX;
+    t2min = TH2MIN;
+    t2max = TH2MAX;
+    dt1 = DTH1;
+    dt2 = DTH2;
+    n2 = (t2max - t2min)/dt2 + 1;
+}
 
 // State variables
 typedef struct{
-    float x, y;     // current end effector position
-    float ox, oy;   // old end effector position
-    float z;        // robot position
-    float dz;       // position increment
-    float th1;      // angle of link 1
-    float th2;      // angle of link 2
-    float space;    // space covered
+    float x, y;     // current end effector position [m, m]
+    float ox, oy;   // old end effector position [m, m]
+    float z;        // robot position [m]
+    float dz;       // position increment [m]
+    float th1;      // angle of link 1 [rad]
+    float th2;      // angle of link 2 [rad]
+    float space;    // space covered [m]
 } state;
 static state rob;
+
+void init_state()
+{
+float t1, t2, t12;
+
+    rob.th1 = TH1MIN;
+    rob.th2 = TH2MIN;
+    t1 = rob.th1;
+    t2 = rob.th2; 
+    t12 = rob.th1  + rob.th2;
+    rob.x = rob.ox = rob.z + L1*cos(t1) + L2*cos(t12);
+    rob.y = rob.oy = RH + L1*sin(t1) + L2*sin(t12);
+    rob.z = rob.dz = rob.space = 0.0;
+}
 
 void compute_end_point()
 {
@@ -38,18 +78,18 @@ float t1, t2, t12;
     rob.y = RH + L1*sin(t1) + L2*sin(t12);
 }
 
-// Angles to state
-int ang2state(float t1, float t2)
+// Angles to state (non serve la matrice T di transizione dello stato)
+int angles2state(float t1, float t2)
 {
-int i, j, n2;
+int i, j;
 
     i = (t1 - t1min)/dt1;
     j = (t2 - t2min)/dt2;
-    n2 = (t2max - t2min)/dt2 + 1;
+    //printf("i=%d, j=%d, n2=%d, ret = %d\n", i, j, n2, i*n2+j);
     return i*n2 + j;
 }
 
-// Action to angles
+// Action to angles: aggiorna gli angoli del robot in base all'azione
 void action2angles(int a)
 {
     switch(a){
@@ -65,7 +105,7 @@ void action2angles(int a)
     if (rob.th2 < TH2MIN) rob.th2 = TH2MIN;
 }
 
-// Next state
+// Next state: aggiorna lo stato in base all'azione e ritorna il nuovo stato
 int next_state(int a)
 {
 int s;
@@ -77,12 +117,12 @@ int s;
         rob.dz = rob.ox - rob.x;
         rob.space += rob.dz;
     }
-    s = ang2state(rob.th1, rob.th2);
+    s = angles2state(rob.th1, rob.th2);
     return s;
 }
 
-// Reward
-#define HARDL   -20     // hard level coordinate
+// Reward (non serve la matrice R dei reward )
+#define HARDL   -0.02   // hard level coordinate [m]
 #define RHIT    -4      // when hitting angle limit
 #define RLOW    -10     // when going too low level
 #define RMOVE   -1      // for each move
@@ -91,27 +131,67 @@ int get_reward(int s, int snew)
 {
 int r;  
     if (snew == s) r = RHIT;        // hit the limit angle
-    else r = rob.dz;                // proportional to progress
-    if (rob.y < YC) r = RLOW;       // going too low CAMBIARE YC -> HARDL
-    r += MOVE;                      // for each move
+    else{
+        //if(rob.dz != 0) printf("Sono avanzato di %f\n", rob.dz);
+        r = rob.dz*100;             // proportional to progress
+    }
+    if (rob.y < HARDL){ 
+        //printf("Sono andato troppo basso\n");
+        r += RLOW;                  // going too low
+    }
+    r += RMOVE;                     // for each move
+    //if(r > 0) printf("reward=%d\n", r); //per debug vediamo quando dà reward positivi
     return r;           
 }
 
 // Learning loop 
-float learn(int s0)
+float qlearn()
 {
-int s, a, r, snew, steps = 0;
-float err = 0;
-    s = s0;
-    while (!end){
-        steps++;
+int s, a, r, snew;
+long step = 0;
+float newerr, err = 0;
+    s = angles2state(rob.th1, rob.th2);
+    //printf("Inizio il ciclo while dallo stato s = %d\n", s);
+    while (step < MAXSTEP){
+        step++;
         a = ql_egreedy_policy(s);
+        //printf("Ottenuta l'azione\n");
         snew = next_state(a);
+        //printf("Ottenuto il nuovo stato\n");
         r = get_reward(s, snew);
-        err += ql_updateQ(s, a, r, snew);
+        //printf("Ottenuto il reward\n");
+        newerr = ql_updateQ(s, a, r, snew);
+        //printf("Aggioranta matrice Q\n");
+        err +=  (newerr - err)/step;
         s = snew;
-        if (step%100 == 0) ql_reduce_exploration();
-        interpreter();
+        if (step%1000 == 0)
+            ql_reduce_exploration();
+        // Monitoriamo la presenza del ciclo sugli stati
+        if (step > MAXSTEP*0.99)
+            printf("Stato s = %d\n", s);
+        //printf("Finito ciclo %ld\n", step);
     }
-    return err/steps;
+    return err;
+}
+
+int main()
+{
+    srand(time(NULL));
+    init_global_variables();
+    init_state();
+    //start_grapichs();
+    ql_init(36, 4);  //36 states, 4 actions
+    ql_set_learning_rate(0.5);
+    ql_set_discount_factor(0.9);
+    ql_set_expl_range(1.0, 0.1);
+    ql_set_expl_decay(0.95);
+    //display_menu();
+    //display_param();
+    //display_environment();
+    //interpreter();
+    printf("inizio il qlearning\n");
+    qlearn();
+    ql_print_Qmatrix();
+    //end_graphics();
+    return 0;
 }
