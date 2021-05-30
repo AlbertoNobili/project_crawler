@@ -6,7 +6,7 @@
 
 // Global definitions
 #define L1      0.5     // link1 length [m]
-#define L2      0.7     // link2 length [m]
+#define L2      0.5     // link2 length [m]
 #define RH      0.4     // robot height [m]
 #define RL      1       // robot length [m]
 #define TH1UP   0       // action move up link 1
@@ -21,6 +21,10 @@
 #define DTH2    0.35    // theta2 quantization step [rad]
 
 #define MAXSTEP 10000000L    // max number of steps
+
+//Global variables modified by graphics.c
+int stop;
+int view;
 
 // Global variables (inutili se tanto ho le costanti, no?)
 static float t1min, t2min;
@@ -144,6 +148,12 @@ int r;
     return r;           
 }
 
+// Extern graphic functions
+extern void init_graphics(state s);
+extern void display_links(state s);
+extern void terminate_graphics();
+extern void read_key();
+
 // Learning loop 
 float qlearn()
 {
@@ -152,7 +162,7 @@ long step = 0;
 float newerr, err = 0;
     s = angles2state(rob.th1, rob.th2);
     //printf("Inizio il ciclo while dallo stato s = %d\n", s);
-    while (step < MAXSTEP){
+    while (!stop){
         step++;
         a = ql_egreedy_policy(s);
         //printf("Ottenuta l'azione\n");
@@ -164,12 +174,17 @@ float newerr, err = 0;
         //printf("Aggioranta matrice Q\n");
         err +=  (newerr - err)/step;
         s = snew;
-        if (step%1000 == 0)
+        if (step%1000 == 0){
             ql_reduce_exploration();
+            update_info(step, rob.space);
+        }
         // Monitoriamo la presenza del ciclo sugli stati
-        if (step > MAXSTEP*0.99)
-            printf("Stato s = %d\n", s);
+        //if (step > MAXSTEP*0.99)
+        //    printf("Stato s = %d\n", s);
         //printf("Finito ciclo %ld\n", step);
+        if(view)
+            display_links(rob);
+        read_key();
     }
     return err;
 }
@@ -179,7 +194,7 @@ int main()
     srand(time(NULL));
     init_global_variables();
     init_state();
-    //start_grapichs();
+    init_graphics(rob);
     ql_init(36, 4);  //36 states, 4 actions
     ql_set_learning_rate(0.5);
     ql_set_discount_factor(0.9);
@@ -192,6 +207,6 @@ int main()
     printf("inizio il qlearning\n");
     qlearn();
     ql_print_Qmatrix();
-    //end_graphics();
+    terminate_graphics();
     return 0;
 }
