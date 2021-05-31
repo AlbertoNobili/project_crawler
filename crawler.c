@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <math.h>
+#include <unistd.h>
 #include "qlearn.h"
 
 // Global definitions
@@ -128,7 +129,7 @@ int s;
 // Reward (non serve la matrice R dei reward )
 #define HARDL   -0.02   // hard level coordinate [m]
 #define RHIT    -4      // when hitting angle limit
-#define RLOW    -10     // when going too low level
+#define RLOW    -20     // when going too low level
 #define RMOVE   -1      // for each move
 
 int get_reward(int s, int snew)
@@ -177,15 +178,16 @@ float newerr, err = 0;
         s = snew;
         if (step%1000 == 0){
             ql_reduce_exploration();
-            //printf("ho fatto uno spazio %f\n", rob.space);
             update_info(step, rob.space);
         }
         // Monitoriamo la presenza del ciclo sugli stati
         //if (step > MAXSTEP*0.99)
         //    printf("Stato s = %d\n", s);
         //printf("Finito ciclo %ld\n", step);
-        if(view)
+        if(view){
             display_links(rob);
+            //usleep(1000);
+        }
         read_key();
     }
     return err;

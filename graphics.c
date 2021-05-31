@@ -58,7 +58,7 @@ int x1, x2, y1, y2, x3, y3, xee, yee;
     x1 = 0;
     y1 = JOINTH;
     x2 = x1 + L1*cos(s.th1);
-    y2 = y1 - L1*sin(s.th2);
+    y2 = y1 - L1*sin(s.th1);
     x3 = x2 + L2*cos(s.th1+s.th2);
     y3 = y2 - L2*sin(s.th1+s.th2);
     line(buf, x1, y1, x2, y2, GREY);
@@ -66,14 +66,15 @@ int x1, x2, y1, y2, x3, y3, xee, yee;
     circlefill(buf, x1, y1, RADIUS, CYAN);
     circlefill(buf, x2, y2, RADIUS, CYAN);
 	//draw end effector
-	xee = (s.x - s.z)*400; 	//posizione in x della bitmap dell'end effector in px
-	yee = YBIT - s.y*400;	//posizione in x della bitmap dell'end effector in px
+	xee = (s.x - s.z)*400; 	       	//posizione in x della bitmap dell'end effector in px
+	yee = JOINTH + CARTH - s.y*400;	//posizione in y della bitmap dell'end effector in px
 	circlefill(buf, xee, yee, RADIUS, RED);
 	//ricopiamo la bitmap
 	blit(buf, screen, 0, 0, CARTR, TOP, buf->w, buf->h);
 
 	return;
 }
+
 
 void update_info(long epoch, float space)
 {
