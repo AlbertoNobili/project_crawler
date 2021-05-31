@@ -42,13 +42,12 @@ typedef struct{
     float space;    // space covered [m]
 } state;
 
+BITMAP* buf;
+
 void display_links(state s)
 {
 int x1, x2, y1, y2, x3, y3, xee, yee;
-BITMAP* buf;
 
-	//usiamo la bitmap come buffer
-	buf = create_bitmap(XBIT, YBIT);
 	//cancelliamo i link precedenti
 	clear_to_color(buf, BLK);
     //draw bottom
@@ -104,6 +103,8 @@ void init_graphics(state s)
     //draw robot
     rectfill(screen, CARTL, CARTT, CARTR, CARTB, BLUE);
     circlefill(screen, CARTR, CARTT, RADIUS, CYAN);
+	// creiamo la bitmap
+	buf = create_bitmap(XBIT, YBIT);
     display_links(s);
 
 	return;
