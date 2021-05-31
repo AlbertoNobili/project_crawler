@@ -13,14 +13,14 @@
 #define DECAY0	0.95	// default epsilon decay rate
 
 // QL matrices
-static int T[MAXSTA][MAXACT];	// transition matrix	INUTILE
-static int R[MAXSTA][MAXACT];	// reward matrix		INUTILE
+//static int T[MAXSTA][MAXACT];	// transition matrix	INUTILE
+//static int R[MAXSTA][MAXACT];	// reward matrix		INUTILE
 static float Q[MAXSTA][MAXACT];	// Q matric
 
 // Global variables
 static int nsta;		// actual # of states
 static int nact;		// actual number of actions
-static int goalstate;	// store the goal state			INUTILE
+//static int goalstate;	// store the goal state			INUTILE
 static float alpha;		// learning rate
 static float gam;		// discount factor
 static float epsilon; 	// actual exploration probability

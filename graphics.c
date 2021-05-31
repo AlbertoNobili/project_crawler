@@ -3,10 +3,10 @@
 #include <stdio.h>
 
 // Nota: 1 cm = 4 pixel
-#define XWIN	1200
-#define YWIN	728
-#define XBIT	450
-#define YBIT	648
+#define XWIN	820
+#define YWIN	628
+#define XBIT	420
+#define YBIT	608
 #define BLK		0
 #define WHITE	15
 #define RED		12
@@ -16,14 +16,14 @@
 #define CYAN	11
 #define GREY	8
 #define CARTH	160     // cart height [px]
-#define CARTL	400     // cart length [px]
-#define CARTB	680     // cart bottom y coord [px]
-#define HARDB   688     // hard bottom y coord [px]
-#define CARTT	620     // cart top y coord [px]
-#define CARTL   200     // cart left x coord [px]
-#define CARTR   600     // cart right x coord [px]
-#define TOP     80     
-#define JOINTH  540     // joint1 y coord in bitmap [px]
+#define CARTW	320     // cart width [px]
+#define CARTT	420     // cart top y coord [px]
+#define CARTB	580     // cart bottom y coord [px]
+#define HARDB   588     // hard bottom y coord [px]
+#define CARTL   80      // cart left x coord [px]
+#define CARTR   400     // cart right x coord [px]
+#define TOP     20     
+#define JOINTH  400     // joint1 y coord in bitmap [px]
 #define RADIUS	5		// joints' radius [px]
 #define L1  	200		// link1 length [px]
 #define L2  	200		// link2 length [px]
@@ -44,7 +44,7 @@ typedef struct{
 
 void display_links(state s)
 {
-int x1, x2, y1, y2, x3, y3;
+int x1, x2, y1, y2, x3, y3, xee, yee;
 BITMAP* buf;
 
 	//usiamo la bitmap come buffer
@@ -52,20 +52,24 @@ BITMAP* buf;
 	//cancelliamo i link precedenti
 	clear_to_color(buf, BLK);
     //draw bottom
-	rectfill(buf, 0, CARTB-80, XBIT, HARDB-80, GREEN);
+	rectfill(buf, 0, CARTB-TOP, XBIT, HARDB-TOP, GREEN);
     //draw hard bottom
-    rectfill(buf, 0, HARDB-80, XBIT, YBIT, DGREEN);
+    rectfill(buf, 0, HARDB-TOP, XBIT, YBIT, DGREEN);
 	//draw links and joints
     x1 = 0;
     y1 = JOINTH;
     x2 = x1 + L1*cos(s.th1);
-    y2 = y1 + L1*sin(s.th2);
+    y2 = y1 - L1*sin(s.th2);
     x3 = x2 + L2*cos(s.th1+s.th2);
-    y3 = y2 + L2*sin(s.th1+s.th2);
-    circlefill(buf, x1, y1, RADIUS, CYAN);
-    circlefill(buf, x2, y2, RADIUS, CYAN);
+    y3 = y2 - L2*sin(s.th1+s.th2);
     line(buf, x1, y1, x2, y2, GREY);
     line(buf, x2, y2, x3, y3, GREY);
+    circlefill(buf, x1, y1, RADIUS, CYAN);
+    circlefill(buf, x2, y2, RADIUS, CYAN);
+	//draw end effector
+	xee = (s.x - s.z)*400; 	//posizione in x della bitmap dell'end effector in px
+	yee = YBIT - s.y*400;	//posizione in x della bitmap dell'end effector in px
+	circlefill(buf, xee, yee, RADIUS, RED);
 	//ricopiamo la bitmap
 	blit(buf, screen, 0, 0, CARTR, TOP, buf->w, buf->h);
 
@@ -75,8 +79,11 @@ BITMAP* buf;
 void update_info(long epoch, float space)
 {
 char s[50];
-	sprintf(s, "Epoch = %ld  Space = %f", epoch, space);
+
+	rectfill(screen, 0, 0, XWIN, TOP, BLK);
+	sprintf(s, "Epoch = %ld  Space = %f metres", epoch, space);
 	textout_centre_ex(screen, font, s, XWIN/2, 10, WHITE, BLK);
+	
 }
 
 void init_graphics(state s)

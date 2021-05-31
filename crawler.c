@@ -8,7 +8,7 @@
 #define L1      0.5     // link1 length [m]
 #define L2      0.5     // link2 length [m]
 #define RH      0.4     // robot height [m]
-#define RL      1       // robot length [m]
+#define RL      0.8     // robot length [m]
 #define TH1UP   0       // action move up link 1
 #define TH1DW   1       // action move down link 1
 #define TH2UP   2       // action move up link 2
@@ -57,12 +57,11 @@ static state rob;
 
 void init_state()
 {
-float t1, t2, t12;
+float t1, t12;
 
     rob.th1 = TH1MIN;
     rob.th2 = TH2MIN;
     t1 = rob.th1;
-    t2 = rob.th2; 
     t12 = rob.th1  + rob.th2;
     rob.x = rob.ox = rob.z + L1*cos(t1) + L2*cos(t12);
     rob.y = rob.oy = RH + L1*sin(t1) + L2*sin(t12);
@@ -71,10 +70,9 @@ float t1, t2, t12;
 
 void compute_end_point()
 {
-float t1, t2, t12;
+float t1, t12;
 
     t1 = rob.th1;
-    t2 = rob.th2; 
     t12 = rob.th1  + rob.th2;
     rob.ox = rob.x;
     rob.oy = rob.y;
@@ -120,6 +118,8 @@ int s;
     if ((rob.y <= 0) || (rob.oy <= 0)){
         rob.dz = rob.ox - rob.x;
         rob.space += rob.dz;
+        //printf("ho fatto un passo %f\n", rob.dz);
+        //printf("ho fatto uno spazio %f\n", rob.space);
     }
     s = angles2state(rob.th1, rob.th2);
     return s;
@@ -153,6 +153,7 @@ extern void init_graphics(state s);
 extern void display_links(state s);
 extern void terminate_graphics();
 extern void read_key();
+extern void update_info(long step, float space);
 
 // Learning loop 
 float qlearn()
@@ -176,6 +177,7 @@ float newerr, err = 0;
         s = snew;
         if (step%1000 == 0){
             ql_reduce_exploration();
+            //printf("ho fatto uno spazio %f\n", rob.space);
             update_info(step, rob.space);
         }
         // Monitoriamo la presenza del ciclo sugli stati
@@ -206,7 +208,7 @@ int main()
     //interpreter();
     printf("inizio il qlearning\n");
     qlearn();
-    ql_print_Qmatrix();
+    //ql_print_Qmatrix();
     terminate_graphics();
     return 0;
 }
